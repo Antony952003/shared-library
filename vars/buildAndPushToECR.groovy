@@ -12,8 +12,12 @@ def call(Map config) {
     }
 
     // Stage: Authenticate with ECR
+
     echo "Authenticating with ECR in region: ${awsRegion}"
     sh """
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    unzip awscliv2.zip
+    sudo ./aws/install
     aws --version
     aws ecr get-login-password --region ${awsRegion} | docker login --username AWS --password-stdin ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com
     """
