@@ -1,3 +1,5 @@
+// vars/buildAndPushToECR.groovy
+
 def call(Map config) {
     // Parameters
     def awsRegion = config.awsRegion ?: 'us-east-1'
@@ -11,55 +13,46 @@ def call(Map config) {
         error("Parameter 'ecrRepoName' is required")
     }
 
-    pipeline {
-        agent any
-        stages {
+    // Stage: Authenticate with ECR
+    stage('Authenticate with ECR') {
+        steps {
+            script {
+                sh """
+                aws ecr get-login-password --region ${awsRegion} | docker login --username AWS --password-stdin ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com
+                """
+            }
+        }
+    }
 
-            stage('Prepare Dockerfile') {
-                steps {
-                    script {
-                        def dockerfilePath = libraryResource('Dockerfile')
-                        writeFile(file: 'Dockerfile', text: dockerfilePath)
-                    }
-                }
+    // Stage: Build Docker Image
+    stage('Build Docker Image') {
+        steps {
+            script {
+                sh """
+                docker build -t ${ecrRepoName}:${imageTag} -f ${dockerFilePath} ${contextPath}
+                """
             }
+        }
+    }
 
-            stage('Authenticate with ECR') {
-                steps {
-                    script {
-                        // AWS ECR Login
-                        sh """
-                        aws ecr get-login-password --region ${awsRegion} | docker login --username AWS --password-stdin ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com
-                        """
-                    }
-                }
+    // Stage: Tag Docker Image
+    stage('Tag Docker Image') {
+        steps {
+            script {
+                sh """
+                docker tag ${ecrRepoName}:${imageTag} ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepoName}:${imageTag}
+                """
             }
-            stage('Build Docker Image') {
-                steps {
-                    script {
-                        sh """
-                        docker build -t ${ecrRepoName}:${imageTag} -f ${dockerFilePath} ${contextPath}
-                        """
-                    }
-                }
-            }
-            stage('Tag Docker Image') {
-                steps {
-                    script {
-                        sh """
-                        docker tag ${ecrRepoName}:${imageTag} <account_id>.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepoName}:${imageTag}
-                        """
-                    }
-                }
-            }
-            stage('Push to ECR') {
-                steps {
-                    script {
-                        sh """
-                        docker push ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepoName}:${imageTag}
-                        """
-                    }
-                }
+        }
+    }
+
+    // Stage: Push to ECR
+    stage('Push to ECR') {
+        steps {
+            script {
+                sh """
+                docker push ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepoName}:${imageTag}
+                """
             }
         }
     }
