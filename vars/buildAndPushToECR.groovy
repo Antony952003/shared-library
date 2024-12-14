@@ -1,5 +1,3 @@
-// vars/buildAndPushToECR.groovy
-
 def call(Map config) {
     // Parameters
     def awsRegion = config.awsRegion ?: 'us-east-1'
@@ -14,46 +12,26 @@ def call(Map config) {
     }
 
     // Stage: Authenticate with ECR
-    stage('Authenticate with ECR') {
-        steps {
-            script {
-                sh """
-                aws ecr get-login-password --region ${awsRegion} | docker login --username AWS --password-stdin ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com
-                """
-            }
-        }
-    }
+    echo "Authenticating with ECR in region: ${awsRegion}"
+    sh """
+    aws ecr get-login-password --region ${awsRegion} | docker login --username AWS --password-stdin ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com
+    """
 
     // Stage: Build Docker Image
-    stage('Build Docker Image') {
-        steps {
-            script {
-                sh """
-                docker build -t ${ecrRepoName}:${imageTag} -f ${dockerFilePath} ${contextPath}
-                """
-            }
-        }
-    }
+    echo "Building Docker image: ${ecrRepoName}:${imageTag}"
+    sh """
+    docker build -t ${ecrRepoName}:${imageTag} -f ${dockerFilePath} ${contextPath}
+    """
 
     // Stage: Tag Docker Image
-    stage('Tag Docker Image') {
-        steps {
-            script {
-                sh """
-                docker tag ${ecrRepoName}:${imageTag} ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepoName}:${imageTag}
-                """
-            }
-        }
-    }
+    echo "Tagging Docker image: ${ecrRepoName}:${imageTag}"
+    sh """
+    docker tag ${ecrRepoName}:${imageTag} ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepoName}:${imageTag}
+    """
 
     // Stage: Push to ECR
-    stage('Push to ECR') {
-        steps {
-            script {
-                sh """
-                docker push ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepoName}:${imageTag}
-                """
-            }
-        }
-    }
+    echo "Pushing Docker image to ECR: ${ecrRepoName}:${imageTag}"
+    sh """
+    docker push ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepoName}:${imageTag}
+    """
 }
