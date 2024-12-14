@@ -14,6 +14,7 @@ def call(Map config) {
     // Stage: Authenticate with ECR
     echo "Authenticating with ECR in region: ${awsRegion}"
     sh """
+    aws --version
     aws ecr get-login-password --region ${awsRegion} | docker login --username AWS --password-stdin ${accountid}.dkr.ecr.${awsRegion}.amazonaws.com
     """
 
