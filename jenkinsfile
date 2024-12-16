@@ -1,0 +1,72 @@
+@Library("library@main") _
+pipeline {
+    agent {
+        kubernetes {
+            defaultContainer 'docker'
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: docker
+      image: docker:dind
+      securityContext:
+        privileged: true
+      command: ["cat"]
+      tty: true
+      volumeMounts:
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+        - name: shared-workspace
+          mountPath: /workspace
+
+    - name: aws-cli
+      image: amazon/aws-cli
+      command: ["cat"]
+      tty: true
+      volumeMounts:
+        - name: shared-workspace
+          mountPath: /workspace
+
+  volumes:
+    - name: docker-socket
+      hostPath:
+        path: /var/run/docker.sock
+    - name: shared-workspace
+      emptyDir: {}
+      """
+        }
+      }
+    environment {
+        AWS_REGION = 'us-east-1'
+        ECR_REGISTRY = '853973692277.dkr.ecr.us-east-1.amazonaws.com'
+        ECR_REPO = 'aj-jenkins'
+        IMAGE_TAG = 'latest'
+        RESOURCES_PATH = './resources'
+    }
+    stages {
+        stage("AWS ECR Login") {
+            steps {
+                script {
+                    awsECRLogin(
+                        credentialsId: 'aws-creds',
+                        awsRegion: env.AWS_REGION,
+                        ecrRegistry: env.ECR_REGISTRY
+                    )
+                }
+            }
+        }
+        stage("Docker Build and Push") {
+            steps {
+                script {
+                    dockerBuildAndPush(
+                        ecrRegistry: env.ECR_REGISTRY,
+                        ecrRepo: env.ECR_REPO,
+                        imageTag: env.IMAGE_TAG,
+                        resourcesPath: env.RESOURCES_PATH
+                    )
+                }
+            }
+        }
+    }
+}
