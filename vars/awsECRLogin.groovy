@@ -6,7 +6,7 @@ def call(Map config = [:]) {
     container('aws-cli') {
         withCredentials([
             [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: config.credentialsId],
-            string(credentialsId: 'session-token', variable: 'AWS_SESSION_TOKEN')
+            string(credentialsId: 'AWS_SESSION_TOKEN', variable: 'AWS_SESSION_TOKEN')
         ]) {
             sh """
             export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
